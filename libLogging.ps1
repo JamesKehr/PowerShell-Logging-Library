@@ -1,5 +1,4 @@
-# validate SMB over QUIC certificate
-#requires -RunAsAdministrator
+# PowerShell logging module
 #requires -Version 5.1
 
 using namespace System.Collections
@@ -917,11 +916,11 @@ Update-TypeData @TypeData -EA SilentlyContinue
 #endregion LOGGING
 
 <#
-    $script:log.NewLog("")
-    $script:log.NewLog("module", function", "message")
-    $script:log.NewLog("function", "message")
-    $script:log.NewError("code", "", $false)
-    $script:log.NewWarning("code", "")
+    $script:libLogging.NewLog("")
+    $script:libLogging.NewLog("module", function", "message")
+    $script:libLogging.NewLog("function", "message")
+    $script:libLogging.NewError("code", "", $false)
+    $script:libLogging.NewWarning("code", "")
 #>
 
 function script:Start-Logging {
@@ -943,18 +942,18 @@ function script:Start-Logging {
         Write-Verbose "No log write mode."
 
         # change the module if the log var exists
-        if ($script:log) {
-            $oldLogMod = $script:log.Module
+        if ($script:libLogging) {
+            $oldLogMod = $script:libLogging.Module
             Write-Verbose "oldLogMod: $oldLogMod"
-            $script:log.Module = $moduleName
+            $script:libLogging.Module = $moduleName
         # otherwise create a new log
         } else {
             Write-Verbose "New log file."
             $oldLogMod = $null
             # create new log with NoWrite set to $true
-            $script:log = [Logging]::new($false, $moduleName)
-            $script:log.ParentModule = $ModuleName
-            $script:log.NewLog("Start-Logging - Parent module: $($script:log.ParentModule)")
+            $script:libLogging = [Logging]::new($false, $moduleName)
+            $script:libLogging.ParentModule = $ModuleName
+            $script:libLogging.NewLog("Start-Logging - Parent module: $($script:libLogging.ParentModule)")
 
         }
     } else {
@@ -973,15 +972,15 @@ function script:Start-Logging {
         }
 
         if ($logFnd) {
-            $oldLogMod = $script:log.Module
-            $script:log.Module = $moduleName
+            $oldLogMod = $script:libLogging.Module
+            $script:libLogging.Module = $moduleName
         # otherwise create a new log
         } else {
             $oldLogMod = ""
             # create new log with NoWrite set to $true
-            $script:log = [Logging]::new($LogPath, $moduleName)
-            $script:log.ParentModule = $ModuleName
-            $script:log.NewLog("Start-Logging - Parent module: $($script:log.ParentModule)")
+            $script:libLogging = [Logging]::new($LogPath, $moduleName)
+            $script:libLogging.ParentModule = $ModuleName
+            $script:libLogging.NewLog("Start-Logging - Parent module: $($script:libLogging.ParentModule)")
         } 
     }
 
@@ -1001,15 +1000,15 @@ function script:Close-Logging {
     )
 
     # close the log if the parent module calls Close-Logging
-    $script:log.NewLog("Close-Logging - ModuleName: $ModuleName; Parent: $($script:log.ParentModule)")
-    $script:log.NewLog("Close-Logging - oldLogMod: $oldLogMod")
-    if ( $ModuleName -eq $script:log.ParentModule ) { # -or [string]::IsNullOrEmpty($oldLogMod)
-        $script:log.NewLog("Close-Logging - Closing log.")
-        $script:log.Close()
+    $script:libLogging.NewLog("Close-Logging - ModuleName: $ModuleName; Parent: $($script:libLogging.ParentModule)")
+    $script:libLogging.NewLog("Close-Logging - oldLogMod: $oldLogMod")
+    if ( $ModuleName -eq $script:libLogging.ParentModule ) { # -or [string]::IsNullOrEmpty($oldLogMod)
+        $script:libLogging.NewLog("Close-Logging - Closing log.")
+        $script:libLogging.Close()
     # swap module name back when returning to a caller
     } else {
-        $script:log.NewLog("Close-Logging - Change log module back to $oldLogMod")
-        $script:log.Module = $oldLogMod
+        $script:libLogging.NewLog("Close-Logging - Change log module back to $oldLogMod")
+        $script:libLogging.Module = $oldLogMod
     }
     
 }
@@ -1035,13 +1034,13 @@ function script:Write-Log {
     if ( -NOT [string]::IsNullOrEmpty($Text) -and -NOT [string]::IsNullOrWhiteSpace($Text) ) {
         # write with module and function from args when module and function are not null/empty
         if ( -NOT [string]::IsNullOrEmpty($Module) -and -NOT [string]::IsNullOrEmpty($Function) ) {
-            $script:log.NewLog($Text, $Function, $Module)
+            $script:libLogging.NewLog($Text, $Function, $Module)
         # write with the function 
         } elseif ( [string]::IsNullOrEmpty($Module) -and -NOT [string]::IsNullOrEmpty($Function) ) {
-            $script:log.NewLog($Text, $Function)
+            $script:libLogging.NewLog($Text, $Function)
         # write just the text
         } else {
-            $script:log.NewLog($Text)
+            $script:libLogging.NewLog($Text)
         }
     } else {
         Write-Debug "Write-Log - No text passed."
@@ -1098,13 +1097,13 @@ function script:Write-LogWarning {
 
         # write with module and function from args when module and function are not null/empty
         if ( -NOT [string]::IsNullOrEmpty($Module) -and -NOT [string]::IsNullOrEmpty($Function) ) {
-            $script:log.NewWarning($Module, $Function, $Code, $Text)
+            $script:libLogging.NewWarning($Module, $Function, $Code, $Text)
         # write with the function 
         } elseif ( [string]::IsNullOrEmpty($Module) -and -NOT [string]::IsNullOrEmpty($Function) ) {
-            $script:log.NewWarning($Function, $Code, $Text)
+            $script:libLogging.NewWarning($Function, $Code, $Text)
         # write just the text
         } else {
-            $script:log.NewWarning($Code, $Text)
+            $script:libLogging.NewWarning($Code, $Text)
         }
     } else {
         Write-Debug "Write-LogWarning - No text or code passed. Text: $Text; Code: $Code"
@@ -1167,13 +1166,13 @@ function script:Write-LogError {
 
         # write with module and function from args when module and function are not null/empty
         if ( -NOT [string]::IsNullOrEmpty($Module) -and -NOT [string]::IsNullOrEmpty($Function) ) {
-            $script:log.NewError($Module, $Function, $Code, $Text, !$NonTerminating.IsPresent)
+            $script:libLogging.NewError($Module, $Function, $Code, $Text, !$NonTerminating.IsPresent)
         # write with the function 
         } elseif ( [string]::IsNullOrEmpty($Module) -and -NOT [string]::IsNullOrEmpty($Function) ) {
-            $script:log.NewError($Function, $Code, $Text, !$NonTerminating.IsPresent)
+            $script:libLogging.NewError($Function, $Code, $Text, !$NonTerminating.IsPresent)
         # write just the text
         } else {
-            $script:log.NewError($Code, $Text, !$NonTerminating.IsPresent)
+            $script:libLogging.NewError($Code, $Text, !$NonTerminating.IsPresent)
         }
     } else {
         Write-Debug "Write-LogError - No text or code passed. Text: $Text; Code: $Code"
